@@ -5,6 +5,8 @@ import {RestModule} from './modules/rest/rest.module';
 import {AggregatorModule} from './modules/aggregator/aggregator.module';
 import {TypeOrmModule} from '@nestjs/typeorm';
 import {MongoConfig} from './services/databases/mongo.config';
+import {config} from 'winston';
+import {get} from './utilities/env';
 
 @Module({
     imports: [
@@ -15,6 +17,7 @@ import {MongoConfig} from './services/databases/mongo.config';
         }),
         AggregatorModule,
         RestModule,
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-call,@typescript-eslint/no-unsafe-member-access
     ],
     controllers: [DefaultController],
     providers: [],

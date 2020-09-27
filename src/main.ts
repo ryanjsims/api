@@ -6,18 +6,36 @@ import {RmqOptions, Transport} from '@nestjs/microservices';
 import {ConfigService} from '@nestjs/config';
 import {AppModule} from './app.module';
 import {DocumentBuilder, SwaggerModule} from '@nestjs/swagger';
+import {WINSTON_MODULE_NEST_PROVIDER, WinstonModule} from 'nest-winston';
+import {get} from './utilities/env';
+import {config} from 'winston';
+import {ConsoleTransportInstance} from 'winston/lib/winston/transports';
 
 async function bootstrap(): Promise<void> {
+    const consoleTransport = {
+        name: 'console',
+        level: get('LOG_LEVEL', get('NODE_ENV', 'development') === 'development' ? 'debug' : 'info'),
+
+    };
+
     const app = await NestFactory.create<NestFastifyApplication>(
         AppModule,
         new FastifyAdapter({
             logger: true,
         }),
+        {
+            logger: WinstonModule.createLogger({
+                levels: config.npm.levels,
+                level: get('LOG_LEVEL', get('NODE_ENV', 'development') === 'development' ? 'debug' : 'info'),
+                transports: [consoleTransport],
+            }),
+        },
     );
 
-    const config = app.get(ConfigService);
+    app.useLogger(app.get(WINSTON_MODULE_NEST_PROVIDER));
+    const appConfig = app.get(ConfigService);
 
-    app.enableCors(config.get('config'));
+    app.enableCors(appConfig.get('config'));
     app.register(fastifyHelmet, {
         contentSecurityPolicy: {
             directives: {
@@ -32,8 +50,8 @@ async function bootstrap(): Promise<void> {
     app.connectMicroservice<RmqOptions>({
         transport: Transport.RMQ,
         options: {
-            urls: config.get('rabbitmq.url'),
-            queue: config.get('rabbitmq.queue'),
+            urls: appConfig.get('rabbitmq.url'),
+            queue: appConfig.get('rabbitmq.queue'),
             queueOptions: {
                 durable: true,
             },
@@ -51,7 +69,7 @@ async function bootstrap(): Promise<void> {
     SwaggerModule.setup('/', app, document);
 
     // await app.startAllMicroservicesAsync();
-    const port = config.get('http.port') ?? 3000;
+    const port = appConfig.get('http.port') ?? 3000;
     await app.listen(port, '0.0.0.0');
     console.log(`Application is running on: ${await app.getUrl()}`);
 }
